@@ -1,0 +1,20 @@
+name: 'pull-e'
+description: 'Add an image to every pull request to encourage better PR descriptions'
+author: 'rmcdgl'
+permissions:
+  issues: write
+  pull-requests: write
+  discussions: write
+inputs:
+  github-token:
+    description: 'GitHub token'
+    required: true
+  openai-api-token:
+    description: 'OpenAI API key'
+    required: true
+  without-style:
+    description: "Don't add a random artist name to the prompt to stylize the output"
+    required: false
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
