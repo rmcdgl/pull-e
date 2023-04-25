@@ -41,7 +41,7 @@ async function run(): Promise<void> {
     const payload = context.payload
     const justOpened = payload.action === 'opened'
 
-    core.debug(
+    core.info(
       `Event: ${eventName} - ${payload.action}. Just opened? ${justOpened}`
     )
 
@@ -60,18 +60,21 @@ async function run(): Promise<void> {
     // Check if there is already a comment from the bot
     // API request seems to time out if if the issue was just opened
     if (!justOpened) {
+      core.info('Checking if comment from PULL-E already exists')
       const commentsResponse = await octokit.rest.issues.listComments({
         ...context.repo,
         issue_number: issueNumber
       })
 
       const existingComment = commentsResponse.data.find(comment =>
-        comment?.body?.toLowerCase().endsWith('generated with pull-e')
+        comment?.body?.toLowerCase().endsWith('generated with pull-e*')
       )
 
       if (existingComment) {
         core.info('Comment from PULL-E already exists, skipping')
         return
+      } else {
+        core.info('No comment from PULL-E found')
       }
     }
 
@@ -86,12 +89,16 @@ async function run(): Promise<void> {
     const text = `${
       useStyle ? `A work in the style of ${artist} ` : ''
     }${title}. ${body}`
+
+    core.info(`Using prompt: ${text}`)
+
     const imageUrl = await generateImage(text)
 
     if (!imageUrl) {
       core.setFailed('Unable to generate image using DALLE-2 API')
       return
     }
+    core.info(`Generated image: ${imageUrl}`)
 
     await octokit.rest.issues.createComment({
       ...context.repo,
@@ -102,6 +109,8 @@ async function run(): Promise<void> {
           : 'Generated with PULL-E'
       }*`
     })
+
+    core.info('Comment created')
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

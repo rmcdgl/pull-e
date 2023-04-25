@@ -2294,7 +2294,7 @@ function run() {
             const eventName = github_1.context.eventName;
             const payload = github_1.context.payload;
             const justOpened = payload.action === 'opened';
-            core.debug(`Event: ${eventName} - ${payload.action}. Just opened? ${justOpened}`);
+            core.info(`Event: ${eventName} - ${payload.action}. Just opened? ${justOpened}`);
             core.debug(`Event name: ${eventName}`);
             if (eventName !== 'pull_request' && eventName !== 'issues') {
                 core.setFailed('This action only supports pull_request and issues events');
@@ -2307,11 +2307,15 @@ function run() {
             // Check if there is already a comment from the bot
             // API request seems to time out if if the issue was just opened
             if (!justOpened) {
+                core.info('Checking if comment from PULL-E already exists');
                 const commentsResponse = yield octokit.rest.issues.listComments(Object.assign(Object.assign({}, github_1.context.repo), { issue_number: issueNumber }));
-                const existingComment = commentsResponse.data.find(comment => { var _a; return (_a = comment === null || comment === void 0 ? void 0 : comment.body) === null || _a === void 0 ? void 0 : _a.toLowerCase().endsWith('generated with pull-e'); });
+                const existingComment = commentsResponse.data.find(comment => { var _a; return (_a = comment === null || comment === void 0 ? void 0 : comment.body) === null || _a === void 0 ? void 0 : _a.toLowerCase().endsWith('generated with pull-e*'); });
                 if (existingComment) {
                     core.info('Comment from PULL-E already exists, skipping');
                     return;
+                }
+                else {
+                    core.info('No comment from PULL-E found');
                 }
             }
             if (!title || !issueNumber) {
@@ -2320,14 +2324,17 @@ function run() {
             }
             const artist = artists_1.artists[Math.floor(Math.random() * artists_1.artists.length)];
             const text = `${useStyle ? `A work in the style of ${artist} ` : ''}${title}. ${body}`;
+            core.info(`Using prompt: ${text}`);
             const imageUrl = yield generateImage(text);
             if (!imageUrl) {
                 core.setFailed('Unable to generate image using DALLE-2 API');
                 return;
             }
+            core.info(`Generated image: ${imageUrl}`);
             yield octokit.rest.issues.createComment(Object.assign(Object.assign({}, github_1.context.repo), { issue_number: issueNumber, body: `![Generated Image](${imageUrl})\n*${useStyle
                     ? `In the style of ${artist}, generated with PULL-E`
                     : 'Generated with PULL-E'}*` }));
+            core.info('Comment created');
         }
         catch (error) {
             if (error instanceof Error)
