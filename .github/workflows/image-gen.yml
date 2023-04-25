@@ -3,10 +3,12 @@ on:
   pull_request:
     branches:
       - main
+    types:
+      - closed
 
 jobs:
   Generate:
-    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'dependabot-preview[bot]'  }}
+    if: ${{ github.event.pull_request.merged == true  }}
     permissions:
       issues: write
       pull-requests: write
