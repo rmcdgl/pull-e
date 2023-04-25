@@ -39,6 +39,11 @@ async function run(): Promise<void> {
 
     const eventName = context.eventName
     const payload = context.payload
+    const justOpened = payload.action === 'opened'
+
+    core.debug(
+      `Event: ${eventName} - ${payload.action}. Just opened? ${justOpened}`
+    )
 
     core.debug(`Event name: ${eventName}`)
     if (eventName !== 'pull_request' && eventName !== 'issues') {
@@ -53,19 +58,21 @@ async function run(): Promise<void> {
     core.debug(`Title: ${title} Body: ${body} Issue Number: ${issueNumber}`)
 
     // Check if there is already a comment from the bot
+    // API request seems to time out if if the issue was just opened
+    if (!justOpened) {
+      const commentsResponse = await octokit.rest.issues.listComments({
+        ...context.repo,
+        issue_number: issueNumber
+      })
 
-    const commentsResponse = await octokit.rest.issues.listComments({
-      ...context.repo,
-      issue_number: issueNumber
-    })
+      const existingComment = commentsResponse.data.find(comment =>
+        comment?.body?.toLowerCase().endsWith('generated with pull-e')
+      )
 
-    const existingComment = commentsResponse.data.find(comment =>
-      comment?.body?.toLowerCase().endsWith('generated with pull-e')
-    )
-
-    if (existingComment) {
-      core.info('Comment from PULL-E already exists, skipping')
-      return
+      if (existingComment) {
+        core.info('Comment from PULL-E already exists, skipping')
+        return
+      }
     }
 
     if (!title || !issueNumber) {

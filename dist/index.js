@@ -2293,6 +2293,8 @@ function run() {
             const octokit = (0, github_1.getOctokit)(token);
             const eventName = github_1.context.eventName;
             const payload = github_1.context.payload;
+            const justOpened = payload.action === 'opened';
+            core.debug(`Event: ${eventName} - ${payload.action}. Just opened? ${justOpened}`);
             core.debug(`Event name: ${eventName}`);
             if (eventName !== 'pull_request' && eventName !== 'issues') {
                 core.setFailed('This action only supports pull_request and issues events');
@@ -2303,11 +2305,14 @@ function run() {
             const issueNumber = (_c = payload[`${eventName}`]) === null || _c === void 0 ? void 0 : _c.number;
             core.debug(`Title: ${title} Body: ${body} Issue Number: ${issueNumber}`);
             // Check if there is already a comment from the bot
-            const commentsResponse = yield octokit.rest.issues.listComments(Object.assign(Object.assign({}, github_1.context.repo), { issue_number: issueNumber }));
-            const existingComment = commentsResponse.data.find(comment => { var _a; return (_a = comment === null || comment === void 0 ? void 0 : comment.body) === null || _a === void 0 ? void 0 : _a.toLowerCase().endsWith('generated with pull-e'); });
-            if (existingComment) {
-                core.info('Comment from PULL-E already exists, skipping');
-                return;
+            // API request seems to time out if if the issue was just opened
+            if (!justOpened) {
+                const commentsResponse = yield octokit.rest.issues.listComments(Object.assign(Object.assign({}, github_1.context.repo), { issue_number: issueNumber }));
+                const existingComment = commentsResponse.data.find(comment => { var _a; return (_a = comment === null || comment === void 0 ? void 0 : comment.body) === null || _a === void 0 ? void 0 : _a.toLowerCase().endsWith('generated with pull-e'); });
+                if (existingComment) {
+                    core.info('Comment from PULL-E already exists, skipping');
+                    return;
+                }
             }
             if (!title || !issueNumber) {
                 core.setFailed('Unable to retrieve required information from the event payload');
